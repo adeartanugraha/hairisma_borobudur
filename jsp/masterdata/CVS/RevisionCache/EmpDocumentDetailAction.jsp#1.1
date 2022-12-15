@@ -1,0 +1,627 @@
+<%-- 
+    Document   : Doc Master Action
+    Created on : Sep 12, 2015, 3:56:51 PM
+    Author     : Priska
+--%>
+<%@page import="com.dimata.qdep.db.DBException"%>
+<%@page import="java.text.SimpleDateFormat"%>
+<%@page import="javax.print.DocFlavor.STRING"%>
+<%@page import="org.apache.poi.ss.formula.functions.Hlookup"%>
+<%@page import="com.dimata.harisma.entity.attendance.I_Atendance"%>
+<%@ page language = "java" %>
+<!-- package java -->
+<%@ page import = "java.util.*" %>
+<!-- package dimata -->
+<%@ page import = "com.dimata.util.*" %>
+<!-- package qdep -->
+<%@ page import = "com.dimata.gui.jsp.*" %>
+<%@ page import = "com.dimata.qdep.form.*" %>
+<!--package harisma -->
+<%@ page import = "com.dimata.harisma.entity.masterdata.*" %>
+<%@ page import = "com.dimata.harisma.form.masterdata.*" %>
+<%@ page import = "com.dimata.harisma.entity.admin.*" %>
+
+<%@ include file = "../main/javainit.jsp" %>
+<% int appObjCode = AppObjInfo.composeObjCode(AppObjInfo.G1_MASTERDATA, AppObjInfo.G2_MD_COMPANY, AppObjInfo.OBJ_DIVISION);%>
+<%@ include file = "../main/checkuser.jsp" %>
+
+
+<%
+        int iCommand = FRMQueryString.requestCommand(request);
+        boolean status = false;
+        int iErrCode = FRMMessage.ERR_NONE;
+        String msgString ="";
+        long oidEmpDoc = FRMQueryString.requestLong(request,"oidEmpDoc");
+        long oidEmpDocAction  = FRMQueryString.requestLong(request,"oidEmpDocAction");
+        int saveType = FRMQueryString.requestInt(request,"saveType");
+        long oidDocAction  = FRMQueryString.requestLong(request,"oidDocAction");
+    
+    
+        
+        
+                CtrlEmpDocAction ctrlEmpDocAction = new CtrlEmpDocAction(request);
+                ControlLine ctrLine = new ControlLine();
+                /*switch statement */
+                
+                /* end switch*/
+                FrmEmpDocAction frmEmpDocAction = ctrlEmpDocAction.getForm();
+
+
+                EmpDocAction empDocAction = ctrlEmpDocAction.getdEmpDocAction();
+                msgString = ctrlEmpDocAction.getMessage();
+
+                //untuk mengambil list param
+                DocMasterAction docMasterAction = new DocMasterAction();
+                try {
+                    docMasterAction = PstDocMasterAction.fetchExc(oidDocAction);
+                } catch (Exception e){
+                }   
+                
+                Hashtable hDocMasterAction = new Hashtable();
+                if (docMasterAction != null){
+                    String whereClause = PstDocMasterActionParam.fieldNames[PstDocMasterActionParam.FLD_DOC_ACTION_ID] + " = " + docMasterAction.getOID();
+                    hDocMasterAction = PstDocMasterActionParam.hList(0, 0, whereClause , "" ); 
+                    
+                   
+                }
+                
+                //untuk employee Mutation
+                DocMasterActionParam docMasterActionParam1 = new DocMasterActionParam();
+                Vector listEmp = new Vector();
+                
+                String newCompanyS = "";
+                String newDivisionS = "";
+                String newDepartmentS = "";
+                String newEmpCatS = "";
+                String newLevelS = "";
+                String newPositionS = "";
+                String newSectionS = "";
+                String workToS = "";
+                
+                boolean valid = true;
+                
+                if (docMasterAction.getActionName().equals("Mutation")){
+                    docMasterActionParam1 =  (DocMasterActionParam) hDocMasterAction.get("Employee to Mutation");
+                    
+                    
+                    String whereC = " "+PstEmpDocList.fieldNames[PstEmpDocList.FLD_OBJECT_NAME] + " = \"" + docMasterActionParam1.getObjectName()+"\" AND "+PstEmpDocList.fieldNames[PstEmpDocList.FLD_EMP_DOC_ID] + " = \"" + oidEmpDoc+"\"";
+                    listEmp = PstEmpDocList.list(0, 0, whereC, ""); //ini daftar orangnya 
+                    
+                    CareerPath careerPath = new CareerPath();
+                    
+                    DocMasterActionParam docMasterActionParamForCompany = new DocMasterActionParam();
+                    docMasterActionParamForCompany =  (DocMasterActionParam) hDocMasterAction.get("New Company");
+                    String newObjectNameForCompany =  (String) docMasterActionParamForCompany.getObjectName();
+                    String newValueForCompany  = PstEmpDocField.getvalueByObjectnameEmpDocId(newObjectNameForCompany, oidEmpDoc);
+                    String getClassNameForCompany = PstEmpDocField.getClassNameByObjectnameEmpDocId(newObjectNameForCompany, oidEmpDoc);
+                    if (getClassNameForCompany.equals("COMPANY")){
+                        long newValuetoLong = Long.parseLong(newValueForCompany);
+                        careerPath.setCompanyId(newValuetoLong);
+                        try{ 
+                            Company company = PstCompany.fetchExc(newValuetoLong); 
+                            newCompanyS = company.getCompany();
+                            careerPath.setCompany(company.getCompany());
+                        } catch (Exception e){ }
+                       
+                    }
+                    
+                    
+                    
+                    //cari tahu ini untuk perubahan apa Divisi
+                    DocMasterActionParam docMasterActionParamForDivision = new DocMasterActionParam();
+                    docMasterActionParamForDivision =  (DocMasterActionParam) hDocMasterAction.get("New Division");
+                    String newObjectNameForDivision =  (String) docMasterActionParamForDivision.getObjectName();
+                    String newValueForDivision  = PstEmpDocField.getvalueByObjectnameEmpDocId(newObjectNameForDivision, oidEmpDoc);
+                    String getClassNameForDivision = PstEmpDocField.getClassNameByObjectnameEmpDocId(newObjectNameForDivision, oidEmpDoc);
+                    if (getClassNameForDivision.equals("DIVISION")){
+                        long newValuetoLong = Long.parseLong(newValueForDivision);
+                            careerPath.setDivisionId(newValuetoLong);
+                        try{ 
+                            Division division = PstDivision.fetchExc(newValuetoLong); 
+                            newDivisionS = division.getDivision();
+                            careerPath.setDivision(division.getDivision());
+                        } catch (Exception e){ }
+                       
+                    }
+                    
+                    
+                    //cari tahu ini untuk perubahan apa
+                    DocMasterActionParam docMasterActionParamForDepartment = new DocMasterActionParam();
+                    docMasterActionParamForDepartment =  (DocMasterActionParam) hDocMasterAction.get("New Department");
+                    String newObjectNameForDepartment =  (String) docMasterActionParamForDepartment.getObjectName();
+                    String newValueForDepartment  = PstEmpDocField.getvalueByObjectnameEmpDocId(newObjectNameForDepartment, oidEmpDoc);
+                    String getClassNameForDepartment = PstEmpDocField.getClassNameByObjectnameEmpDocId(newObjectNameForDepartment, oidEmpDoc);
+                    if (getClassNameForDepartment.equals("DEPARTMENT")){
+                        long newValuetoLong = Long.parseLong(newValueForDepartment);
+                            careerPath.setDepartmentId(newValuetoLong);
+                        try{ 
+                            Department department = PstDepartment.fetchExc(newValuetoLong); 
+                            newDepartmentS = department.getDepartment();
+                            careerPath.setDepartment(department.getDepartment());
+                        } catch (Exception e){ }
+                       
+                    }
+                    
+                     //cari tahu ini untuk perubahan apa 
+                    DocMasterActionParam docMasterActionParamForEmpCat = new DocMasterActionParam();
+                    docMasterActionParamForEmpCat =  (DocMasterActionParam) hDocMasterAction.get("New Emp Cat");
+                    String newObjectNameForEmpCat =  (String) docMasterActionParamForEmpCat.getObjectName();
+                    String newValueForEmpCat  = PstEmpDocField.getvalueByObjectnameEmpDocId(newObjectNameForEmpCat, oidEmpDoc);
+                    String getClassNameForEmpCat = PstEmpDocField.getClassNameByObjectnameEmpDocId(newObjectNameForEmpCat, oidEmpDoc);
+                    if (getClassNameForEmpCat.equals("EMPCAT")){
+                        long newValuetoLong = Long.parseLong(newValueForEmpCat);
+                        careerPath.setEmpCategoryId(newValuetoLong);
+                        try{ 
+                            EmpCategory empCategory = PstEmpCategory.fetchExc(newValuetoLong); 
+                            newEmpCatS = empCategory.getEmpCategory();
+                            careerPath.setEmpCategoryId(newValuetoLong);
+                        } catch (Exception e){ }
+                       
+                    }
+                    
+                    //cari tahu ini untuk perubahan apa 
+                    DocMasterActionParam docMasterActionParamForLevel = new DocMasterActionParam();
+                    docMasterActionParamForLevel =  (DocMasterActionParam) hDocMasterAction.get("New Level");
+                    String newObjectNameForLevel =  (String) docMasterActionParamForLevel.getObjectName();
+                    String newValueForLevel  = PstEmpDocField.getvalueByObjectnameEmpDocId(newObjectNameForLevel, oidEmpDoc);
+                    String getClassNameForLevel = PstEmpDocField.getClassNameByObjectnameEmpDocId(newObjectNameForLevel, oidEmpDoc);
+                    if (getClassNameForLevel.equals("LEVEL")){
+                        long newValuetoLong = Long.parseLong(newValueForLevel);
+                        careerPath.setLevelId(newValuetoLong);
+                        try{ 
+                            Level level = PstLevel.fetchExc(newValuetoLong); 
+                            newLevelS = level.getLevel();
+                            careerPath.setLevel(level.getLevel());
+                        } catch (Exception e){ }
+                       
+                    }
+                    
+                    
+                    //cari tahu ini untuk perubahan apa
+                    DocMasterActionParam docMasterActionParamForPosition = new DocMasterActionParam();
+                    docMasterActionParamForPosition =  (DocMasterActionParam) hDocMasterAction.get("New Position");
+                    String newObjectNameForPosition =  (String) docMasterActionParamForPosition.getObjectName();
+                    String newValueForPosition  = PstEmpDocField.getvalueByObjectnameEmpDocId(newObjectNameForPosition, oidEmpDoc);
+                    String getClassNameForPosition = PstEmpDocField.getClassNameByObjectnameEmpDocId(newObjectNameForPosition, oidEmpDoc);
+                    if (getClassNameForPosition.equals("POSITION")){
+                        long newValuetoLong = Long.parseLong(newValueForPosition);
+                        careerPath.setPositionId(newValuetoLong);
+                        try{ 
+                            Position position = PstPosition.fetchExc(newValuetoLong); 
+                            newPositionS = position.getPosition();
+                            careerPath.setPosition(position.getPosition());
+                        } catch (Exception e){ }
+                      
+                    }
+                    
+                    DocMasterActionParam docMasterActionParamForSection = new DocMasterActionParam();
+                    docMasterActionParamForSection =  (DocMasterActionParam) hDocMasterAction.get("New Section");
+                    String newObjectNameForSection =  (String) docMasterActionParamForSection.getObjectName();
+                    String newValueForSection  = PstEmpDocField.getvalueByObjectnameEmpDocId(newObjectNameForSection, oidEmpDoc);
+                    String getClassNameForSection = PstEmpDocField.getClassNameByObjectnameEmpDocId(newObjectNameForSection, oidEmpDoc);
+                    if (getClassNameForSection.equals("SECTION")){
+                        long newValuetoLong = Long.parseLong(newValueForSection);
+                        careerPath.setSectionId(newValuetoLong);
+                        try{ 
+                            Section section = PstSection.fetchExc(newValuetoLong); 
+                            newSectionS = section.getSection();
+                            careerPath.setSection(section.getSection());
+                        } catch (Exception e){ }
+                    }
+                    
+                    DocMasterActionParam docMasterActionParamForWorkTo = new DocMasterActionParam();
+                    docMasterActionParamForWorkTo =  (DocMasterActionParam) hDocMasterAction.get("New Work to");
+                    String newObjectNameForWorkTo =  (String) docMasterActionParamForWorkTo.getObjectName();
+                    String newValueForWorkTo  = PstEmpDocField.getvalueByObjectnameEmpDocId(newObjectNameForWorkTo, oidEmpDoc);
+                    //String getClassNameForWorkTo = PstEmpDocField.getClassNameByObjectnameEmpDocId(newObjectNameForWorkTo, oidEmpDoc);
+                    Date  dateF = new Date(); 
+                        SimpleDateFormat formatter = new SimpleDateFormat("yyyy-MM-dd");
+                    try{
+                        dateF = formatter.parse(newValueForWorkTo);
+                        careerPath.setWorkTo(dateF);
+                        workToS = ""+dateF;
+                    } catch (Exception e){
+
+                    }
+                    
+                         
+                        
+                   
+                    if (iCommand == Command.SAVE){
+                       for(int list = 0 ; list < listEmp.size(); list++ ){
+
+                        EmpDocList empDocList = (EmpDocList) listEmp.get(list);
+                        Employee employeeFetch = PstEmployee.fetchExc(empDocList.getEmployee_id());
+                        Hashtable HashtableEmp = PstEmployee.fetchExcHashtable(empDocList.getEmployee_id());
+
+                         
+
+//mencari work from
+                     String whereClause = PstCareerPath.fieldNames[PstCareerPath.FLD_EMPLOYEE_ID] + " = " + employeeFetch.getOID();
+                     String orderClause = PstCareerPath.fieldNames[PstCareerPath.FLD_WORK_FROM];
+                     Vector objectClass = PstCareerPath.list(0, 0, whereClause, orderClause);
+                    CareerPath careerPath1 = new CareerPath();
+                    if (objectClass.size() > 0){
+                       careerPath1 = (CareerPath) objectClass.get(objectClass.size()-1);
+                    Date fromWork = careerPath1.getWorkTo();
+                    fromWork.setDate(fromWork.getDate() + 1);
+                    String str_dt_WorkFrom = "";
+                    try {
+                        Date dt_WorkFrom = fromWork;
+                        if (dt_WorkFrom == null) {
+                            dt_WorkFrom = new Date();
+                        }
+                        careerPath.setWorkFrom(dt_WorkFrom);
+                       // str_dt_WorkFrom = Formater.formatDate(dt_WorkFrom, "dd MMMM yyyy");
+                    } catch (Exception e) {
+                        //str_dt_WorkFrom = "";
+                    }
+                    
+                    
+
+            } else {
+                        careerPath.setWorkFrom(employeeFetch.getCommencingDate());
+                  //rowx.add(""+employee.getCommencingDate());
+            }
+                                                       
+                                                      
+                                                      
+                                                      long oidCareerPath = 0;  
+                                                                                                                  
+                                                      Vector data = new Vector();
+                                                      if(employeeFetch.getOID()!=0){
+                                                            long oidEmp= employeeFetch.getOID();
+                                                             data =PstCareerPath.dateCareerPath(oidEmp);
+                                                      
+                                                      if(data !=null && data.size() >0){     
+                                                         for(int i=0; i<data.size();i++){
+                                                                 CareerPath care = (CareerPath)data.get(i);
+                                                                 if(careerPath!=null && care!=null && care.getWorkFrom()!=null && care.getWorkTo()!=null && careerPath.getWorkFrom()!=null && careerPath.getWorkTo()!=null){
+                                                           java.util.Date newStartDate = care.getWorkFrom();
+                                                           java.util.Date newEndDate = care.getWorkTo();
+                                                           java.util.Date startDate = careerPath.getWorkFrom();
+                                                           java.util.Date endDate = careerPath.getWorkTo();
+                                                           String sTanggalTo =Formater.formatDate(newStartDate, "dd-MM-yyyy");
+                                                           String sTanggalFrom =Formater.formatDate(newEndDate, "dd-MM-yyyy");
+                                                           String Error=""+sTanggalTo +" TO " + sTanggalFrom;
+                                                           if ((oidCareerPath!=0 ? (care.getOID() == oidCareerPath?false:true) :  care.getOID() != oidCareerPath) &&newStartDate.after( careerPath.getWorkFrom()) && newStartDate.before(careerPath.getWorkTo())) {
+                                                               valid = false;  
+                                                               msgString = "Tanggal yang diinputkan sudah ada" + " please check other Career Path form on the same range:" + " <a href=\"javascript:openLeaveOverlap(\'" + care.getOID() + "\');\">" + Error + "</a> ; ";
+                                                           } else if ((oidCareerPath!=0 ? (care.getOID() == oidCareerPath?false:true) :  care.getOID() != oidCareerPath) &&newEndDate.after(startDate) && newEndDate.before(endDate)) {
+                                                               valid = false;  
+                                                               msgString = "Tanggal yang diinputkan sudah ada" + " please check other Career Path form on the same range:" + " <a href=\"javascript:openLeaveOverlap(\'" + care.getOID() + "\');\">" + Error + "</a> ; ";
+                                                           } else if ((oidCareerPath!=0 ? (care.getOID() == oidCareerPath?false:true) :  care.getOID() != oidCareerPath) &&startDate.after(newStartDate) && startDate.before(newEndDate)) {
+                                                               valid = false;  
+                                                               msgString = "Tanggal yang diinputkan sudah ada" + " please check other Career Path form on the same range:" + " <a href=\"javascript:openLeaveOverlap(\'" + care.getOID() + "\');\">" + Error + "</a> ; ";
+                                                           } else if ( (oidCareerPath!=0 ? (care.getOID() == oidCareerPath?false:true) :  care.getOID() != oidCareerPath) && endDate.after(newStartDate) && endDate.before(newEndDate)) {
+                                                               valid = false;  
+                                                               msgString = "Tanggal yang diinputkan sudah ada" + " please check other Career Path form on the same range:" + " <a href=\"javascript:openLeaveOverlap(\'" + care.getOID() + "\');\">" + Error + "</a> ; ";
+                                                           } else if ( (oidCareerPath!=0 ? (care.getOID() == oidCareerPath?false:true) :  care.getOID() != oidCareerPath) && newStartDate.equals(startDate) && newEndDate.equals(endDate)) {
+                                                               valid = false;  
+                                                               msgString = "Tanggal yang diinputkan sudah ada" + " please check other Career Path form on the same range:" + " <a href=\"javascript:openLeaveOverlap(\'" + care.getOID() + "\');\">" + Error + "</a> ; ";
+                                                           }
+
+
+                                                         }
+                                                         }
+                                                        }
+                                                        }
+
+                                                        if (valid){
+                                                                try{
+                                                                        long oid = PstCareerPath.insertExc(careerPath);
+                                                                        msgString = FRMMessage.getMessage(FRMMessage.MSG_SAVED);
+                                                                }catch(DBException dbexc){
+                                                                }
+                                                        }
+                       
+                       }
+                    }
+                }
+                iErrCode = ctrlEmpDocAction.action(iCommand, oidEmpDocAction,oidDocAction, oidEmpDoc,saveType);
+            
+%>
+
+
+
+<html><!-- #BeginTemplate "/Templates/main.dwt" -->
+    <head>
+        <!-- #BeginEditable "doctitle" -->
+        <title>HARISMA - EmpDocAction</title>
+        <script language="JavaScript">
+
+           function cmdSave(){
+                document.frmEmpDocField.command.value="<%=String.valueOf(Command.SAVE)%>";
+                document.frmEmpDocField.action="EmpDocumentDetailAction.jsp";
+                document.frmEmpDocField.submit();
+   
+            }  
+             function cmdSaveMutation(){
+                document.frmEmpDocField.command.value="<%=String.valueOf(Command.SAVE)%>";
+                document.frmEmpDocField.action="EmpDocumentDetailAction.jsp?saveType="+0;
+                document.frmEmpDocField.submit();
+   
+            }    
+
+
+                //-------------- script control line -------------------
+                function MM_swapImgRestore() { //v3.0
+                    var i,x,a=document.MM_sr; for(i=0;a&&i<a.length&&(x=a[i])&&x.oSrc;i++) x.src=x.oSrc;
+                }
+
+                function MM_preloadImages() { //v3.0
+                    var d=document; if(d.images){ if(!d.MM_p) d.MM_p=new Array();
+                        var i,j=d.MM_p.length,a=MM_preloadImages.arguments; for(i=0; i<a.length; i++)
+                            if (a[i].indexOf("#")!=0){ d.MM_p[j]=new Image; d.MM_p[j++].src=a[i];}}
+                    }
+
+                    function MM_findObj(n, d) { //v4.0
+                        var p,i,x;  if(!d) d=document; if((p=n.indexOf("?"))>0&&parent.frames.length) {
+                            d=parent.frames[n.substring(p+1)].document; n=n.substring(0,p);}
+                        if(!(x=d[n])&&d.all) x=d.all[n]; for (i=0;!x&&i<d.forms.length;i++) x=d.forms[i][n];
+                        for(i=0;!x&&d.layers&&i<d.layers.length;i++) x=MM_findObj(n,d.layers[i].document);
+                        if(!x && document.getElementById) x=document.getElementById(n); return x;
+                    }
+
+                    function MM_swapImage() { //v3.0
+                        var i,j=0,x,a=MM_swapImage.arguments; document.MM_sr=new Array; for(i=0;i<(a.length-2);i+=3)
+                            if ((x=MM_findObj(a[i]))!=null){document.MM_sr[j++]=x; if(!x.oSrc) x.oSrc=x.src; x.src=a[i+2];}
+                    }
+
+        </script>
+        <!-- #EndEditable -->
+        <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+        <!-- #BeginEditable "styles" -->
+        <link rel="stylesheet" href="../styles/main.css" type="text/css">
+        <!-- #EndEditable -->
+        <!-- #BeginEditable "stylestab" -->
+        <link rel="stylesheet" href="../styles/tab.css" type="text/css">
+        <!-- #EndEditable -->
+        <!-- #BeginEditable "headerscript" -->
+        <SCRIPT language=JavaScript>
+                    function hideObjectForEmployee(){
+                    }
+
+                    function hideObjectForLockers(){
+                    }
+
+                    function hideObjectForCanteen(){
+                    }
+
+                    function hideObjectForClinic(){
+                    }
+
+                    function hideObjectForMasterdata(){
+                    }
+
+        </SCRIPT>
+        <!-- #EndEditable -->
+    </head>
+
+    <body <%=noBack%> bgcolor="#FFFFFF" text="#000000" leftmargin="0" topmargin="0" marginwidth="0" marginheight="0" onLoad="MM_preloadImages('<%=approot%>/images/BtnNewOn.jpg')">
+        <table width="100%" border="0" cellspacing="0" cellpadding="0" height="100%" bgcolor="#F9FCFF" >
+             <%if(headerStyle && !verTemplate.equalsIgnoreCase("0")){%> 
+           <%//@include file="../styletemplate/template_header.jsp" %>
+            <%}else{%>
+            <tr>
+                <td ID="TOPTITLE" background="<%=approot%>/images/HRIS_HeaderBg3.jpg" width="100%" height="54">
+                    <!-- #BeginEditable "header" -->
+                    <%@ include file = "../main/header.jsp" %>
+                    <!-- #EndEditable -->
+                </td>
+            </tr>
+            <tr>
+                <td  bgcolor="#9BC1FF" height="15" ID="MAINMENU" valign="middle"> <!-- #BeginEditable "menumain" -->
+                    <%@ include file = "../main/mnmain.jsp" %>
+                    <!-- #EndEditable --> </td>
+            </tr>
+            <tr>
+                <td  bgcolor="#9BC1FF" height="10" valign="middle">
+
+                    <table width="100%" border="0" cellspacing="0" cellpadding="0">
+                        <tr>
+                            <td align="left"><img src="<%=approot%>/images/harismaMenuLeft1.jpg" width="8" height="8"></td>
+                            <td align="center" background="<%=approot%>/images/harismaMenuLine1.jpg" width="100%"><img src="<%=approot%>/images/harismaMenuLine1.jpg" width="8" height="8"></td>
+                            <td align="right"><img src="<%=approot%>/images/harismaMenuRight1.jpg" width="8" height="8"></td>
+                        </tr>
+                    </table>
+                </td>
+            </tr>
+            <%}%>
+            <tr>
+                <td width="88%" valign="top" align="left">
+                    <table width="100%" border="0" cellspacing="3" cellpadding="2">
+                        <tr>
+                            <td width="100%">
+                                <table width="100%" border="0" cellspacing="0" cellpadding="0">
+                                    <tr>
+                                        <td height="20">
+                                            <font color="#FF6600" face="Arial"><strong>
+                                                    <!-- #BeginEditable "contenttitle" -->
+                                                    <%=docMasterAction.getActionName()%>
+                                                </strong></font>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td>
+                                            <table width="100%" border="0" cellspacing="0" cellpadding="0">
+                                                <tr>
+                                                    <td  style="background-color:<%=bgColorContent%>; "> 
+                                                        <table width="100%" border="0" cellspacing="1" cellpadding="1" >
+                                                            <tr>
+                                                                <td valign="top">
+                                                                    <table style="border:1px solid <%=garisContent%>" width="100%" border="0" cellspacing="1" cellpadding="1" class="tablecolor">
+                                                                        <tr>
+                                                                            <td valign="top">
+                                                                                 <form name="frmEmpDocField" method="post" action="">
+                                                                                    <input type="hidden" name="command" value="<%=iCommand%>">
+                                                                                    <input type="hidden" name="oidEmpDoc" value="<%=oidEmpDoc%>">
+                                                                                    <input type="hidden" name="oidEmpDocAction" value="<%=oidEmpDocAction%>">
+                                                                                    <input type="hidden" name="oidDocAction" value="<%=oidDocAction%>">
+                                                                                    <%=valid %>
+                                                                                    <table style="border:1px solid ; border-color: #0084ff; border-style: groove;" width="80%" border="1" cellspacing="1" cellpadding="1" class="tablecolor">
+                                                                                     
+                                                                                         <tr>
+                                                                                            <td style="background: #9e9e9e; text-align: center; font-size: 15; ">
+                                                                                                EMP NUM
+                                                                                            </td>
+                                                                                            <td style="background: #9e9e9e; text-align: center; font-size: 15; ">
+                                                                                                NAME
+                                                                                            </td>
+                                                                                            <td style="background: #9e9e9e; text-align: center; font-size: 15; ">
+                                                                                                COMPANY CURRENT
+                                                                                            </td>
+                                                                                            <td style="background: #9e9e9e; text-align: center; font-size: 15; ">
+                                                                                                COMPANY AFTER
+                                                                                            </td>
+                                                                                            <td style="background: #9e9e9e; text-align: center; font-size: 15; ">
+                                                                                                DIVISION CURRENT
+                                                                                            </td>
+                                                                                            <td style="background: #9e9e9e; text-align: center; font-size: 15; ">
+                                                                                                DIVISION AFTER
+                                                                                            </td>
+                                                                                            <td style="background: #9e9e9e; text-align: center; font-size: 15; ">
+                                                                                                DEPARTMENT CURRENT
+                                                                                            </td>
+                                                                                            <td style="background: #9e9e9e; text-align: center; font-size: 15; ">
+                                                                                                DEPARTMENT AFTER
+                                                                                            </td>
+                                                                                            <td style="background: #9e9e9e; text-align: center; font-size: 15; ">
+                                                                                                EMP CAT CURRENT
+                                                                                            </td>
+                                                                                            <td style="background: #9e9e9e; text-align: center; font-size: 15; ">
+                                                                                                EMP CAT AFTER
+                                                                                            </td>
+                                                                                            <td style="background: #9e9e9e; text-align: center; font-size: 15; ">
+                                                                                                LEVEL CURRENT
+                                                                                            </td>
+                                                                                            <td style="background: #9e9e9e; text-align: center; font-size: 15; ">
+                                                                                                LEVEL AFTER
+                                                                                            </td>
+                                                                                            <td style="background: #9e9e9e; text-align: center; font-size: 15; ">
+                                                                                                POSITION CURRENT
+                                                                                            </td>
+                                                                                            <td style="background: #9e9e9e; text-align: center; font-size: 15; ">
+                                                                                                POSITION AFTER
+                                                                                            </td>
+                                                                                            <td style="background: #9e9e9e; text-align: center; font-size: 15; ">
+                                                                                                SECTION CURRENT
+                                                                                            </td>
+                                                                                            <td style="background: #9e9e9e; text-align: center; font-size: 15; ">
+                                                                                                SECTION AFTER
+                                                                                            </td>
+                                                                                            <td style="background: #9e9e9e; text-align: center; font-size: 15; ">
+                                                                                                WORK TO AFTER
+                                                                                            </td>
+                                                                                            
+                                                                                        </tr>
+                                                                                        
+                                                                                        
+                                                                                        <%
+                                                                                           for(int list = 0 ; list < listEmp.size(); list++ ){
+
+                                                                                                EmpDocList empDocList = (EmpDocList) listEmp.get(list);
+                                                                                                Employee employeeFetch = PstEmployee.fetchExc(empDocList.getEmployee_id());
+                                                                                                Hashtable HashtableEmp = PstEmployee.fetchExcHashtable(empDocList.getEmployee_id());
+
+                                                                                        %>
+                                                                                    
+                                                                                        <tr>
+                                                                                            <td  style="background-color: #ffffff; text-align: center;">
+                                                                                                <%=employeeFetch.getEmployeeNum()%>
+                                                                                            </td>
+                                                                                            <td  style="background-color: #ffffff; text-align: center;">
+                                                                                                <%=employeeFetch.getFullName()%>
+                                                                                            </td>
+                                                                                            <td  style="background-color: #ffffff; text-align: center;">
+                                                                                                <%=employeeFetch.getCompanyId()%>
+                                                                                            </td>
+                                                                                            <td  style="background-color: #ffffff; text-align: center;">
+                                                                                                <%=newCompanyS%>
+                                                                                            </td>
+                                                                                            <td  style="background-color: #ffffff; text-align: center;">
+                                                                                                <%=employeeFetch.getDivisionId()%>
+                                                                                            </td>
+                                                                                            <td  style="background-color: #ffffff; text-align: center;">
+                                                                                                <%=newDivisionS%>
+                                                                                            </td>
+                                                                                            <td  style="background-color: #ffffff; text-align: center;">
+                                                                                                <%=employeeFetch.getDepartmentId()%>
+                                                                                            </td>
+                                                                                            <td  style="background-color: #ffffff; text-align: center;">
+                                                                                                <%=newDepartmentS%>
+                                                                                            </td>
+                                                                                            <td  style="background-color: #ffffff; text-align: center;">
+                                                                                                <%=employeeFetch.getEmpCategoryId()%>
+                                                                                            </td>
+                                                                                            <td  style="background-color: #ffffff; text-align: center;">
+                                                                                                <%=newEmpCatS%>
+                                                                                            </td>
+                                                                                            <td  style="background-color: #ffffff; text-align: center;">
+                                                                                                <%=employeeFetch.getLevelId()%>
+                                                                                            </td>
+                                                                                            <td  style="background-color: #ffffff; text-align: center;">
+                                                                                                <%=newLevelS%>
+                                                                                            </td>
+                                                                                            <td  style="background-color: #ffffff; text-align: center;">
+                                                                                                <%=employeeFetch.getPositionId()%>
+                                                                                            </td>
+                                                                                            <td  style="background-color: #ffffff; text-align: center;">
+                                                                                                <%=newPositionS%>
+                                                                                            </td>
+                                                                                            <td  style="background-color: #ffffff; text-align: center;">
+                                                                                                <%=employeeFetch.getSectionId()%>
+                                                                                            </td>
+                                                                                            <td  style="background-color: #ffffff; text-align: center;">
+                                                                                                <%=newSectionS %>
+                                                                                            </td>
+                                                                                            <td  style="background-color: #ffffff; text-align: center;">
+                                                                                                <%=workToS%>
+                                                                                            </td>
+                                                                                        </tr>
+                                                                                   
+                                                                                    <% } %>
+                                                                                    </table>
+                                                                                    <a href="javascript:cmdSaveMutation()" class="command">RUN</a>
+                                                                                </form>
+                                                                            </td>
+                                                                        </tr>
+                                                                    </table>
+                                                                </td>
+                                                            </tr>
+                                                        </table>
+                                                    </td>
+                                                </tr>
+                                                <tr>
+                                                    <td>&nbsp; </td>
+                                                </tr>
+                                            </table>
+                                        </td>
+                                    </tr>
+                                </table>
+                            </td>
+                        </tr>
+                    </table>
+                </td>
+            </tr>
+             <%if(headerStyle && !verTemplate.equalsIgnoreCase("0")){%>
+            <tr>
+                            <td valign="bottom">
+                               <!-- untuk footer -->
+                                <%@include file="../footer.jsp" %>
+                            </td>
+                            
+            </tr>
+            <%}else{%>
+            <tr> 
+                <td colspan="2" height="20" > 
+      <%@ include file = "../main/footer.jsp" %>
+                </td>
+            </tr>
+            <%}%>
+        </table>
+    </body>
+    <script language="JavaScript">
+    </script>
+</html>
+

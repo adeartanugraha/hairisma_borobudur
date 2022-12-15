@@ -1,0 +1,10 @@
+Starting DBConnectionBroker Version 1.0
+dbDriver = com.mysql.jdbc.Driver
+dbURL = jdbc:mysql://localhost:3306/hairisma_borobudur
+dbLogin = admin
+dbPasswd = **********
+logfile = tmsconn.log
+minconnections = 1
+maxconnections = 3
+Total refresh interval = 0.01 days
+-----------------------------------------

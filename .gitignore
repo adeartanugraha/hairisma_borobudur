@@ -1,0 +1,6 @@
+build/
+conf/
+nbproject/
+build.xml
+/dist/
+harismaVerX2.xml
